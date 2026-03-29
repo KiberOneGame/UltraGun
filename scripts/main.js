@@ -26,6 +26,7 @@ var canvas;
 var ctx;
 var score = 0;
 var gameState = "menu";
+var paused = false; // Добавлено: переменная состояния паузы
 
 window.roundTimeLeft = 0;
 
@@ -40,6 +41,7 @@ function initGame() {
   if (typeof window.shopOpen !== "undefined") {
     window.shopOpen = false;
   }
+  paused = false; // Сбрасываем паузу при начале новой игры
 }
 
 function gameLoop(ts) {
@@ -50,7 +52,8 @@ function gameLoop(ts) {
   if (canvas && ctx) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (gameState === "playing") {
+    // Логика таймера (работает только если игра идет и не на паузе)
+    if (gameState === "playing" && !paused) {
       window.roundTimeLeft -= dt;
       if (window.roundTimeLeft <= 0) {
         window.roundTimeLeft = 0;
@@ -58,15 +61,31 @@ function gameLoop(ts) {
       }
     }
 
-    if (gameState === "playing") {
+    // Логика обновлений (физика, враги) (работает только если игра идет и не на паузе)
+    if (gameState === "playing" && !paused) {
       updatePlayer();
       updateEnemies();
       checkCollisions();
     }
 
+    // Отрисовка (работает всегда, даже на паузе)
     drawPlayer();
     drawEnemies();
     drawUI();
+
+    // Отрисовка оверлея паузы
+    if (paused && gameState === "playing") {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 48px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("ПАУЗА", canvas.width / 2, canvas.height / 2);
+      
+      ctx.font = "20px Arial";
+      ctx.fillText("Нажми P для продолжения", canvas.width / 2, canvas.height / 2 + 40);
+    }
   }
 
   requestAnimationFrame(gameLoop);
@@ -81,6 +100,12 @@ document.addEventListener("DOMContentLoaded", function () {
   initGame();
 
   document.addEventListener("keydown", function (e) {
+    if (e.code === "KeyP") {
+      if (gameState === "playing") {
+        paused = !paused;
+      }
+    }
+
     if (e.code === "Enter") {
       if (gameState === "menu" || gameState === "gameover") {
         gameState = "playing";
@@ -90,16 +115,16 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       }
     }
-    if (e.code === "Space" && gameState === "playing") {
+    if (e.code === "Space" && gameState === "playing" && !paused) { // Не стрелять на паузе
       e.preventDefault();
       if (typeof tossCoins === "function") {
         tossCoins();
       }
     }
-    if (e.code === "KeyB" && gameState === "playing") {
+    if (e.code === "KeyB" && gameState === "playing" && !paused) { // Не открывать магазин на паузе
       window.shopOpen = !window.shopOpen;
     }
-    if (window.shopOpen && gameState === "playing") {
+    if (window.shopOpen && gameState === "playing" && !paused) {
       if (e.code === "Digit1" && typeof window.tryBuyCoinUpgrade === "function") {
         window.tryBuyCoinUpgrade();
       }
